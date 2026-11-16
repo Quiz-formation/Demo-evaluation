@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0F5C6E">
+<title>Évaluation en ligne</title>
+
+<script>
+/* =====================================================================
+   CONFIGURATION — tout ce qui change d'un client à l'autre est ici.
+   Rien d'autre à modifier dans le fichier.
+   ===================================================================== */
+const CONFIG = {
+
+  // Identifiant de cette version du questionnaire.
+  // À CHANGER dès que vous modifiez les questions ou les objectifs :
+  // cela évite de reprendre une progression enregistrée avec l'ancienne version.
+  id: "demo-excel-v1",
+
+  organisme: {
+    nom: "Formation Démo",
+    initiales: "FD",                       // affichées dans le logo (2 lettres)
+    sousTitre: "Organisme de formation"
+  },
+
+  formation: {
+    titre: "Excel — niveau débutant à intermédiaire",
+    consigne: "10 questions, une seule réponse possible par question. Comptez environ 10 minutes. Vous pouvez revenir en arrière pour modifier une réponse."
+  },
+
+  couleurs: {
+    principale: "#0F5C6E",                 // boutons, barres, logo
+    fond: "#F2F5F6",                       // arrière-plan de la page
+    texte: "#1B2A33"
+  },
+
+  // Les deux types d'évaluation proposés sur l'écran d'accueil.
+  modes: [
+    { id: "entree", titre: "Test de positionnement", detail: "À l'entrée en formation", court: "Entrée" },
+    { id: "sortie", titre: "Évaluation des acquis",  detail: "À la fin de la formation", court: "Sortie" }
+  ],
+
+  // Niveau indicatif selon le score global (min = score minimum en %).
+  niveaux: [
+    { min: 0,  nom: "Débutant" },
+    { min: 40, nom: "Intermédiaire" },
+    { min: 75, nom: "Avancé" }
+  ],
+
+  // Objectifs pédagogiques (6 maximum conseillé pour la fiche PDF).
+  objectifs: [
+    { id: "o1", titre: "Saisie et mise en forme" },
+    { id: "o2", titre: "Formules de base" },
+    { id: "o3", titre: "Tableaux et graphiques" }
+  ],
+
+  // Questions : "objectif" = id d'un objectif ci-dessus,
+  // "bonneReponse" = position de la bonne réponse dans "choix" (0 = première).
+  questions: [
+    {
+      objectif: "o1",
+      question: "Vous venez de saisir une valeur dans une cellule. Quelle touche valide la saisie et passe à la cellule du dessous ?",
+      choix: ["Échap", "Entrée", "Ctrl + S", "Suppr"],
+      bonneReponse: 1
+    },
+    {
+      objectif: "o1",
+      question: "Une cellule affiche ####### à la place du nombre saisi. Que se passe-t-il ?",
+      choix: [
+        "La formule contient une erreur",
+        "La cellule est protégée",
+        "La colonne est trop étroite pour afficher la valeur",
+        "Le fichier est endommagé"
+      ],
+      bonneReponse: 2
+    },
+    {
+      objectif: "o1",
+      question: "Quel outil copie uniquement la mise en forme d'une cellule (couleurs, police, bordures) vers une autre ?",
+      choix: [
+        "Reproduire la mise en forme (le pinceau)",
+        "Fusionner et centrer",
+        "Rechercher et remplacer",
+        "Renvoyer à la ligne automatiquement"
+      ],
+      bonneReponse: 0
+    },
+    {
+      objectif: "o2",
+      question: "Par quel caractère une formule Excel doit-elle commencer ?",
+      choix: ["#", "$", "@", "="],
+      bonneReponse: 3
+    },
+    {
+      objectif: "o2",
+      question: "Quelle formule additionne toutes les cellules de A1 à A10 ?",
+      choix: ["=A1+A10", "=SOMME(A1:A10)", "=TOTAL(A1:A10)", "=SOMME(A1;A10)"],
+      bonneReponse: 1
+    },
+    {
+      objectif: "o2",
+      question: "Dans la formule =B2*$E$1, à quoi servent les symboles $ ?",
+      choix: [
+        "À afficher le résultat en euros",
+        "À arrondir le résultat",
+        "À garder la référence E1 fixe quand la formule est recopiée",
+        "À masquer le contenu de la cellule E1"
+      ],
+      bonneReponse: 2
+    },
+    {
+      objectif: "o2",
+      question: "La cellule A1 contient 10. Qu'affiche la formule =SI(A1>=10;\"Admis\";\"Refusé\") ?",
+      choix: ["Admis", "Refusé", "10", "Un message d'erreur"],
+      bonneReponse: 0
+    },
+    {
+      objectif: "o3",
+      question: "Dans une liste de clients, vous voulez afficher uniquement ceux de Lyon, sans supprimer les autres lignes. Quel outil utilisez-vous ?",
+      choix: ["Le tri de A à Z", "La fusion de cellules", "Le filtre", "Le masquage de colonnes"],
+      bonneReponse: 2
+    },
+    {
+      objectif: "o3",
+      question: "Quel type de graphique convient le mieux pour montrer l'évolution d'un chiffre d'affaires mois par mois ?",
+      choix: ["Un graphique en secteurs (camembert)", "Un graphique en courbes", "Un graphique en radar", "Un graphique en anneau"],
+      bonneReponse: 1
+    },
+    {
+      objectif: "o3",
+      question: "À quoi sert principalement un tableau croisé dynamique ?",
+      choix: [
+        "À protéger un classeur par mot de passe",
+        "À relier deux classeurs entre eux",
+        "À mettre en page un document avant impression",
+        "À synthétiser et analyser rapidement un grand nombre de lignes"
+      ],
+      bonneReponse: 3
+    }
+  ],
+
+  // URL de l'application web Google Apps Script (se termine par /exec).
+  // Laissez vide ("") pour ne rien envoyer : le questionnaire fonctionne quand même.
+  googleSheetUrl: "https://script.google.com/macros/s/AKfycbzkY7kHLbDV90C3vWoC8j_Cz_tfvaOymtWMg4qM1F1eW-wEo3c7fcqHR7bCxH6uVOXH2g/exec",
+
+  // Information affichée sous le formulaire d'accueil.
+  mentionDonnees: "Démonstration : vous pouvez saisir un nom et une adresse fictifs.",
+
+  // Mention en bas de chaque écran. Mettez afficher: false pour les versions clients.
+  credit: {
+    afficher: true,
+    nom: "Mohamed Jenane",
+    email: "jenanemohamed41@gmail.com"
+  }
+};
+</script>
+
+<style>
+  :root {
+    --principale: #0F5C6E;
+    --principale-fonce: #0B4755;
+    --principale-pale: #E7EFF1;
+    --sur-principale: #FFFFFF;
+    --fond: #F2F5F6;
+    --texte: #1B2A33;
+    --texte-doux: #5B6B75;
+    --trait: #D3DBDF;
+    --surface: #FFFFFF;
+    --erreur: #B3261E;
+    --succes: #1F6F4A;
+    --rayon: 10px;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background: var(--fond);
+    color: var(--texte);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .page {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 20px max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+    flex: 1;
+  }
+
+  /* En-tête organisme */
+  .entete { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .logo {
+    flex: none; width: 44px; height: 44px; border-radius: 10px;
+    background: var(--principale); color: var(--sur-principale);
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 17px; letter-spacing: .02em;
+  }
+  .entete-nom { font-weight: 700; font-size: 17px; line-height: 1.2; }
+  .entete-sous { color: var(--texte-doux); font-size: 14px; line-height: 1.3; }
+
+  /* Feuille */
+  .feuille {
+    background: var(--surface);
+    border: 1px solid var(--trait);
+    border-radius: 14px;
+    padding: 24px 20px 26px;
+  }
+  @media (min-width: 600px) {
+    .page { padding-top: 36px; }
+    .feuille { padding: 36px 40px 38px; }
+  }
+  [hidden] { display: none !important; }
+
+  h1 { font-size: 25px; line-height: 1.2; margin: 0 0 10px; letter-spacing: -.01em; }
+  h2 { font-size: 18px; line-height: 1.3; margin: 0 0 12px; }
+  h1:focus, h2:focus, legend:focus { outline: none; }
+  p { margin: 0 0 14px; }
+  .doux { color: var(--texte-doux); }
+  .petit { font-size: 14.5px; }
+
+  /* Formulaire d'accueil */
+  .champs { display: grid; gap: 16px; margin: 24px 0 26px; }
+  @media (min-width: 600px) { .champs { grid-template-columns: 1fr 1fr; } .champ-large { grid-column: 1 / -1; } }
+  label.etiquette, .etiquette { display: block; font-weight: 600; font-size: 15.5px; margin-bottom: 6px; }
+  input[type="text"], input[type="email"] {
+    width: 100%; min-height: 48px; padding: 10px 14px;
+    font: inherit; font-size: 17px; color: var(--texte);
+    background: #fff; border: 1.5px solid #9AA8B0; border-radius: var(--rayon);
+    -webkit-appearance: none; appearance: none;
+  }
+  input[type="text"]:focus, input[type="email"]:focus {
+    outline: 3px solid var(--principale-pale); border-color: var(--principale);
+  }
+  input.invalide { border-color: var(--erreur); }
+  .message-erreur { color: var(--erreur); font-size: 14.5px; margin-top: 6px; min-height: 0; }
+
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  legend { padding: 0; }
+
+  /* Choix (modes et réponses) */
+  .liste-choix { display: grid; gap: 10px; }
+  .choix {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 16px; min-height: 54px;
+    border: 1.5px solid var(--trait); border-radius: var(--rayon);
+    background: #fff; cursor: pointer;
+    transition: border-color .12s, background-color .12s;
+  }
+  .choix input {
+    flex: none; width: 22px; height: 22px; margin: 2px 0 0;
+    accent-color: var(--principale); cursor: pointer;
+  }
+  .choix.actif { border-color: var(--principale); background: var(--principale-pale); }
+  .choix:focus-within { outline: 3px solid var(--principale-pale); outline-offset: 1px; border-color: var(--principale); }
+  .choix-texte { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .choix-titre { display: block; font-weight: 600; }
+  .choix-detail { display: block; color: var(--texte-doux); font-size: 15px; }
+  @media (hover: hover) { .choix:hover { border-color: var(--principale); } }
+
+  /* Boutons */
+  .bouton {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 50px; padding: 12px 22px;
+    font: inherit; font-weight: 600; font-size: 17px; text-align: center;
+    border-radius: var(--rayon); border: 1.5px solid var(--principale);
+    background: var(--principale); color: var(--sur-principale);
+    cursor: pointer; touch-action: manipulation;
+    -webkit-appearance: none; appearance: none;
+  }
+  .bouton:focus-visible { outline: 3px solid var(--principale-pale); outline-offset: 2px; }
+  @media (hover: hover) { .bouton:hover:not(:disabled) { background: var(--principale-fonce); border-color: var(--principale-fonce); } }
+  .bouton:disabled { opacity: .45; cursor: not-allowed; }
+  .bouton.secondaire { background: #fff; color: var(--principale); }
+  @media (hover: hover) { .bouton.secondaire:hover:not(:disabled) { background: var(--principale-pale); color: var(--principale-fonce); } }
+  .bouton.bloc { width: 100%; }
+  .lien-bouton {
+    font: inherit; font-size: 15.5px; color: var(--texte-doux);
+    background: none; border: 0; padding: 10px 4px; cursor: pointer; text-decoration: underline;
+  }
+
+  /* Quiz */
+  .progression-ligne { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 15px; }
+  .progression-compte { font-weight: 600; white-space: nowrap; }
+  .progression-objectif { color: var(--texte-doux); text-align: right; }
+  .barre { height: 8px; border-radius: 99px; background: var(--principale-pale); overflow: hidden; }
+  .barre > span { display: block; height: 100%; width: 0; border-radius: 99px; background: var(--principale); transition: width .25s ease; }
+  .progression .barre { margin: 8px 0 26px; }
+  .question { font-size: 20px; font-weight: 700; line-height: 1.35; margin-bottom: 18px; display: block; width: 100%; }
+  .navigation { display: flex; gap: 12px; margin-top: 26px; }
+  .navigation .bouton { flex: 1; }
+  .navigation .bouton.secondaire { flex: 0 1 auto; }
+  @media (min-width: 600px) { .navigation { justify-content: space-between; } .navigation .bouton { flex: 0 1 auto; min-width: 150px; } }
+
+  /* Résultats */
+  .fiche-lignes { margin: 18px 0 24px; padding: 0; }
+  .fiche-lignes div { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; }
+  .fiche-lignes dt { color: var(--texte-doux); flex: none; }
+  .fiche-lignes dd { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 10px; margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+  .fiche-lignes dd::before { content: ""; flex: 1; min-width: 12px; border-bottom: 1.5px dotted var(--trait); transform: translateY(-4px); }
+  .global { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 22px; margin-bottom: 12px; }
+  .global-score { font-size: 60px; font-weight: 700; line-height: 1; letter-spacing: -.03em; color: var(--principale); font-variant-numeric: tabular-nums; }
+  .global-detail { padding-bottom: 6px; }
+  .global-niveau { font-weight: 700; font-size: 18px; }
+  .global .barre { flex-basis: 100%; height: 12px; margin-top: 8px; }
+  .section { border-top: 1px solid var(--trait); margin-top: 26px; padding-top: 22px; }
+  .objectif + .objectif { margin-top: 18px; }
+  .objectif-ligne { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+  .objectif-titre { font-weight: 600; }
+  .objectif-score { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .objectif-detail { color: var(--texte-doux); font-size: 14.5px; margin-top: 4px; }
+  .actions { display: grid; gap: 6px; justify-items: center; margin-top: 28px; }
+  .statut { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 15px; margin-top: 22px; padding: 12px 14px; border-radius: var(--rayon); background: var(--fond); }
+  .statut.ok { color: var(--succes); background: #EAF4EE; }
+  .statut.echec { color: var(--erreur); background: #FBEDEC; }
+  .statut .lien-bouton { color: inherit; padding: 2px 0; font-weight: 600; }
+
+  /* Pied de page */
+  .pied {
+    width: 100%; max-width: 680px; margin: 0 auto;
+    padding: 18px max(16px, env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    color: var(--texte-doux); font-size: 13px;
+  }
+  .pied a { color: inherit; }
+
+  .alerte { border: 1.5px solid var(--erreur); color: var(--erreur); background: #FBEDEC; border-radius: var(--rayon); padding: 14px 16px; margin-bottom: 16px; font-size: 15px; }
+  .alerte ul { margin: 6px 0 0; padding-left: 20px; }
+
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+</style>
+</head>
+
+<body>
+<div class="page">
+
+  <header class="entete">
+    <div class="logo" id="logo" aria-hidden="true"></div>
+    <div>
+      <div class="entete-nom" id="org-nom"></div>
+      <div class="entete-sous" id="org-sous"></div>
+    </div>
+  </header>
+
+  <noscript><div class="alerte">Ce questionnaire a besoin de JavaScript. Activez-le dans votre navigateur puis rechargez la page.</div></noscript>
+  <div class="alerte" id="erreur-config" hidden></div>
+
+  <main>
+
+    <!-- ============ Écran 1 : accueil ============ -->
+    <section class="feuille" id="ecran-accueil" hidden>
+      <h1 id="accueil-titre" tabindex="-1"></h1>
+      <p class="doux" id="accueil-consigne"></p>
+
+      <form id="form-accueil" novalidate>
+        <div class="champs">
+          <div>
+            <label class="etiquette" for="champ-nom">Nom</label>
+            <input type="text" id="champ-nom" name="nom" autocomplete="family-name" autocapitalize="words" maxlength="60" required>
+            <div class="message-erreur" id="err-nom" role="alert"></div>
+          </div>
+          <div>
+            <label class="etiquette" for="champ-prenom">Prénom</label>
+            <input type="text" id="champ-prenom" name="prenom" autocomplete="given-name" autocapitalize="words" maxlength="60" required>
+            <div class="message-erreur" id="err-prenom" role="alert"></div>
+          </div>
+          <div class="champ-large">
+            <label class="etiquette" for="champ-email">Adresse e-mail</label>
+            <input type="email" id="champ-email" name="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" maxlength="120" required>
+            <div class="message-erreur" id="err-email" role="alert"></div>
+          </div>
+        </div>
+
+        <fieldset>
+          <legend class="etiquette">Type d'évaluation</legend>
+          <div class="liste-choix" id="liste-modes"></div>
+          <div class="message-erreur" id="err-mode" role="alert"></div>
+        </fieldset>
+
+        <p style="margin: 26px 0 0"><button type="submit" class="bouton bloc">Commencer le questionnaire</button></p>
+        <p class="doux petit" id="mention-donnees" style="margin: 14px 0 0"></p>
+      </form>
+    </section>
+
+    <!-- ============ Écran 2 : quiz ============ -->
+    <section class="feuille" id="ecran-quiz" hidden>
+      <div class="progression">
+        <div class="progression-ligne">
+          <span class="progression-compte" id="quiz-compte"></span>
+          <span class="progression-objectif" id="quiz-objectif"></span>
+        </div>
+        <div class="barre" id="quiz-barre" role="progressbar" aria-valuemin="0" aria-label="Progression dans le questionnaire"><span></span></div>
+      </div>
+
+      <fieldset>
+        <legend class="question" id="quiz-question" tabindex="-1"></legend>
+        <div class="liste-choix" id="quiz-choix"></div>
+      </fieldset>
+
+      <div class="navigation">
+        <button type="button" class="bouton secondaire" id="btn-precedent">Précédent</button>
+        <button type="button" class="bouton" id="btn-suivant">Suivant</button>
+      </div>
+    </section>
+
+    <!-- ============ Écran 3 : résultats ============ -->
+    <section class="feuille" id="ecran-resultats" hidden>
+      <h1 id="res-titre" tabindex="-1">Vos résultats</h1>
+
+      <dl class="fiche-lignes">
+        <div><dt>Stagiaire</dt><dd id="res-stagiaire"></dd></div>
+        <div><dt>Évaluation</dt><dd id="res-mode"></dd></div>
+        <div><dt>Date</dt><dd id="res-date"></dd></div>
+      </dl>
+
+      <h2>Score global</h2>
+      <div class="global">
+        <div class="global-score" id="res-score"></div>
+        <div class="global-detail">
+          <div class="global-niveau" id="res-niveau"></div>
+          <div class="doux" id="res-detail"></div>
+        </div>
+        <div class="barre" id="res-barre"><span></span></div>
+      </div>
+      <p class="doux petit">Ce niveau est indicatif. Votre formateur confirme le niveau retenu.</p>
+
+      <div class="section">
+        <h2>Score par objectif</h2>
+        <div id="res-objectifs"></div>
+      </div>
+
+      <div class="statut" id="res-statut" role="status" hidden></div>
+
+      <div class="actions">
+        <button type="button" class="bouton bloc" id="btn-pdf">Télécharger la fiche PDF</button>
+        <button type="button" class="lien-bouton" id="btn-nouveau">Démarrer un nouveau passage</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="pied" id="pied" hidden></footer>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ------------------------------------------------------------------
+     Petits utilitaires
+     ------------------------------------------------------------------ */
+  const $ = (id) => document.getElementById(id);
+  const INSECABLE = " ";
+  const deux = (n) => String(n).padStart(2, "0");
+
+  function creer(balise, classe, texte) {
+    const el = document.createElement(balise);
+    if (classe) el.className = classe;
+    if (texte != null) el.textContent = texte;
+    return el;
+  }
+  function formaterDate(d) {
+    return deux(d.getDate()) + "/" + deux(d.getMonth() + 1) + "/" + d.getFullYear() +
+           " à " + deux(d.getHours()) + ":" + deux(d.getMinutes());
+  }
+  function pluriel(n, mot) { return n + INSECABLE + mot + (n > 1 ? "s" : ""); }
+  function texteBonnes(bonnes, total) {
+    return bonnes + " bonne" + (bonnes > 1 ? "s" : "") + " réponse" + (bonnes > 1 ? "s" : "") + " sur " + total;
+  }
+
+  /* Couleurs : lecture d'un code #RRGGBB et mélange avec blanc / noir */
+  function lireHex(hex) {
+    let h = String(hex || "").trim().replace("#", "");
+    if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+    if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+  function melanger(rgb, cible, part) {
+    return "#" + rgb.map((v, i) => deux(Math.round(v + (cible[i] - v) * part).toString(16))).join("");
+  }
+  function luminance(rgb) {
+    const f = rgb.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2];
+  }
+
+  /* ------------------------------------------------------------------
+     Vérification de la configuration (évite une démo cassée après
+     une modification de CONFIG)
+     ------------------------------------------------------------------ */
+  function verifierConfig() {
+    const pb = [];
+    const C = (typeof CONFIG === "object" && CONFIG) || null;
+    if (!C) return ["L'objet CONFIG est introuvable ou contient une erreur de syntaxe (virgule ou guillemet manquant)."];
+    if (!C.organisme || !C.organisme.nom) pb.push("organisme.nom est vide.");
+    if (!C.formation || !C.formation.titre) pb.push("formation.titre est vide.");
+    if (!Array.isArray(C.modes) || C.modes.length < 1) pb.push("modes doit contenir au moins un type d'évaluation.");
+    if (!Array.isArray(C.niveaux) || C.niveaux.length < 1) pb.push("niveaux doit contenir au moins un niveau.");
+    if (!Array.isArray(C.objectifs) || C.objectifs.length < 1) pb.push("objectifs doit contenir au moins un objectif.");
+    if (!Array.isArray(C.questions) || C.questions.length < 1) pb.push("questions doit contenir au moins une question.");
+    if (pb.length) return pb;
+    const ids = C.objectifs.map((o) => o.id);
+    C.questions.forEach((q, i) => {
+      const n = "Question " + (i + 1) + " : ";
+      if (!q.question) pb.push(n + "le texte de la question est vide.");
+      if (ids.indexOf(q.objectif) === -1) pb.push(n + "l'objectif « " + q.objectif + " » n'existe pas dans la liste des objectifs.");
+      if (!Array.isArray(q.choix) || q.choix.length < 2) pb.push(n + "il faut au moins 2 choix.");
+      else if (!Number.isInteger(q.bonneReponse) || q.bonneReponse < 0 || q.bonneReponse >= q.choix.length)
+        pb.push(n + "bonneReponse doit être un nombre entre 0 et " + (q.choix.length - 1) + ".");
+    });
+    C.objectifs.forEach((o) => {
+      if (!C.questions.some((q) => q.objectif === o.id)) pb.push("L'objectif « " + o.titre + " » n'a aucune question.");
+    });
+    return pb;
+  }
+
+  const problemes = verifierConfig();
+  if (problemes.length) {
+    const boite = $("erreur-config");
+    boite.hidden = false;
+    boite.appendChild(creer("strong", null, "Configuration à corriger avant utilisation :"));
+    const ul = creer("ul");
+    problemes.forEach((p) => ul.appendChild(creer("li", null, p)));
+    boite.appendChild(ul);
+    return;
+  }
+
+  const C = CONFIG;
+  const NB = C.questions.length;
+  const COULEUR = lireHex(C.couleurs && C.couleurs.principale) ? C.couleurs.principale : "#0F5C6E";
+
+  /* ------------------------------------------------------------------
+     Habillage : couleurs, logo, textes fixes, mention de bas de page
+     ------------------------------------------------------------------ */
+  (function habiller() {
+    const rgb = lireHex(COULEUR);
+    const racine = document.documentElement.style;
+    racine.setProperty("--principale", COULEUR);
+    racine.setProperty("--principale-fonce", melanger(rgb, [0, 0, 0], 0.22));
+    racine.setProperty("--principale-pale", melanger(rgb, [255, 255, 255], 0.9));
+    racine.setProperty("--sur-principale", luminance(rgb) > 0.5 ? "#14212A" : "#FFFFFF");
+    if (C.couleurs && lireHex(C.couleurs.fond)) racine.setProperty("--fond", C.couleurs.fond);
+    if (C.couleurs && lireHex(C.couleurs.texte)) racine.setProperty("--texte", C.couleurs.texte);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", COULEUR);
+
+    document.title = C.formation.titre + " | " + C.organisme.nom;
+    $("logo").textContent = C.organisme.initiales || C.organisme.nom.slice(0, 2).toUpperCase();
+    $("org-nom").textContent = C.organisme.nom;
+    $("org-sous").textContent = C.organisme.sousTitre || "";
+    $("accueil-titre").textContent = C.formation.titre;
+    $("accueil-consigne").textContent = C.formation.consigne || "";
+    $("mention-donnees").textContent = C.mentionDonnees || "";
+    $("mention-donnees").hidden = !C.mentionDonnees;
+
+    const cr = C.credit;
+    if (cr && cr.afficher && cr.nom) {
+      const pied = $("pied");
+      pied.hidden = false;
+      pied.appendChild(document.createTextNode("Démo réalisée par " + cr.nom));
+      if (cr.email) {
+        pied.appendChild(document.createTextNode(" — "));
+        const a = creer("a", null, cr.email);
+        a.href = "mailto:" + cr.email;
+        pied.appendChild(a);
+      }
+    }
+  })();
+
+  /* ------------------------------------------------------------------
+     État du passage + sauvegarde locale (reprise après rechargement)
+     ------------------------------------------------------------------ */
+  const CLE = "evaluation:" + (C.id || "defaut");
+  let stockageOk = true;
+  let etat = etatVide();
+
+  function etatVide() {
+    return {
+      v: C.id || "defaut",
+      ecran: "accueil",                       // accueil | quiz | resultats
+      stagiaire: { nom: "", prenom: "", email: "" },
+      mode: "",
+      reponses: new Array(NB).fill(null),
+      index: 0,
+      idPassage: "",
+      fin: 0,
+      envoi: "non"                            // non | fait
+    };
+  }
+  function sauver() {
+    if (!stockageOk) return;
+    try { localStorage.setItem(CLE, JSON.stringify(etat)); } catch (e) { stockageOk = false; }
+  }
+  function charger() {
+    let brut = null;
+    try { brut = localStorage.getItem(CLE); } catch (e) { stockageOk = false; return; }
+    if (!brut) return;
+    try {
+      const s = JSON.parse(brut);
+      const valide = s && s.v === etat.v &&
+        ["accueil", "quiz", "resultats"].indexOf(s.ecran) !== -1 &&
+        Array.isArray(s.reponses) && s.reponses.length === NB &&
+        s.reponses.every((r, i) => r === null || (Number.isInteger(r) && r >= 0 && r < C.questions[i].choix.length)) &&
+        s.stagiaire && typeof s.stagiaire === "object";
+      if (!valide) { effacer(); return; }
+      etat = Object.assign(etatVide(), s);
+      etat.index = Math.min(Math.max(0, etat.index | 0), NB - 1);
+      if (etat.ecran !== "accueil" && (!C.modes.some((m) => m.id === etat.mode) || !etat.idPassage)) etat = etatVide();
+      if (etat.ecran === "resultats" && (etat.reponses.indexOf(null) !== -1 || !etat.fin)) etat.ecran = "quiz";
+    } catch (e) { effacer(); }
+  }
+  function effacer() {
+    try { localStorage.removeItem(CLE); } catch (e) { /* stockage indisponible */ }
+  }
+  function nouvelId() {
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let alea = "";
+    try {
+      const t = new Uint8Array(6);
+      crypto.getRandomValues(t);
+      t.forEach((v) => { alea += alphabet[v % alphabet.length]; });
+    } catch (e) {
+      for (let i = 0; i < 6; i++) alea += alphabet[Math.floor(Math.random() * alphabet.length)];
+    }
+    const d = new Date();
+    return "P" + d.getFullYear() + deux(d.getMonth() + 1) + deux(d.getDate()) + "-" + alea;
+  }
+  const modeChoisi = () => C.modes.filter((m) => m.id === etat.mode)[0] || C.modes[0];
+
+  /* ------------------------------------------------------------------
+     Calcul des résultats
+     ------------------------------------------------------------------ */
+  function calculer() {
+    const parObjectif = C.objectifs.map((o) => ({ id: o.id, titre: o.titre, bonnes: 0, total: 0, pct: 0 }));
+    let bonnes = 0;
+    C.questions.forEach((q, i) => {
+      const cible = parObjectif.filter((o) => o.id === q.objectif)[0];
+      const juste = etat.reponses[i] === q.bonneReponse;
+      cible.total++;
+      if (juste) { cible.bonnes++; bonnes++; }
+    });
+    parObjectif.forEach((o) => { o.pct = o.total ? Math.round((100 * o.bonnes) / o.total) : 0; });
+    const pct = Math.round((100 * bonnes) / NB);
+    const niveaux = C.niveaux.slice().sort((a, b) => a.min - b.min);
+    let niveau = niveaux[0].nom;
+    niveaux.forEach((n) => { if (pct >= n.min) niveau = n.nom; });
+    return { bonnes: bonnes, total: NB, pct: pct, niveau: niveau, objectifs: parObjectif };
+  }
+
+  /* ------------------------------------------------------------------
+     Navigation entre écrans
+     ------------------------------------------------------------------ */
+  function afficher(ecran, sansFocus) {
+    ["accueil", "quiz", "resultats"].forEach((e) => { $("ecran-" + e).hidden = e !== ecran; });
+    if (ecran === "accueil") rendreAccueil();
+    if (ecran === "quiz") rendreQuestion();
+    if (ecran === "resultats") rendreResultats();
+    if (!sansFocus) {
+      window.scrollTo(0, 0);
+      const cible = ecran === "accueil" ? $("accueil-titre") : ecran === "quiz" ? $("quiz-question") : $("res-titre");
+      try { cible.focus({ preventScroll: true }); } catch (e) { /* sans importance */ }
+    }
+  }
+
+  /* ---------- Accueil ---------- */
+  const champs = { nom: $("champ-nom"), prenom: $("champ-prenom"), email: $("champ-email") };
+
+  function construireModes() {
+    const liste = $("liste-modes");
+    C.modes.forEach((m) => {
+      const label = creer("label", "choix");
+      const radio = creer("input");
+      radio.type = "radio"; radio.name = "mode"; radio.value = m.id;
+      const texte = creer("span", "choix-texte");
+      texte.appendChild(creer("span", "choix-titre", m.titre));
+      if (m.detail) texte.appendChild(creer("span", "choix-detail", m.detail));
+      label.appendChild(radio); label.appendChild(texte);
+      liste.appendChild(label);
+      radio.addEventListener("change", () => {
+        etat.mode = m.id; sauver(); marquerActifs(liste); $("err-mode").textContent = "";
+      });
+    });
+  }
+  function marquerActifs(liste) {
+    Array.prototype.forEach.call(liste.querySelectorAll(".choix"), (l) => {
+      l.classList.toggle("actif", l.querySelector("input").checked);
+    });
+  }
+  function rendreAccueil() {
+    champs.nom.value = etat.stagiaire.nom;
+    champs.prenom.value = etat.stagiaire.prenom;
+    champs.email.value = etat.stagiaire.email;
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="mode"]'), (r) => { r.checked = r.value === etat.mode; });
+    marquerActifs($("liste-modes"));
+  }
+  Object.keys(champs).forEach((cle) => {
+    champs[cle].addEventListener("input", () => {
+      etat.stagiaire[cle] = champs[cle].value;
+      sauver();
+      champs[cle].classList.remove("invalide");
+      $("err-" + cle).textContent = "";
+    });
+  });
+
+  $("form-accueil").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    if (etat.ecran !== "accueil") return;
+    const nom = champs.nom.value.trim().replace(/\s+/g, " ");
+    const prenom = champs.prenom.value.trim().replace(/\s+/g, " ");
+    const email = champs.email.value.trim();
+    const erreurs = {
+      nom: nom ? "" : "Indiquez votre nom.",
+      prenom: prenom ? "" : "Indiquez votre prénom.",
+      email: !email ? "Indiquez votre adresse e-mail."
+           : /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) ? "" : "Cette adresse e-mail semble incomplète. Exemple : prenom.nom@exemple.fr",
+      mode: etat.mode ? "" : "Choisissez le type d'évaluation."
+    };
+    let premier = null;
+    ["nom", "prenom", "email"].forEach((cle) => {
+      $("err-" + cle).textContent = erreurs[cle];
+      champs[cle].classList.toggle("invalide", !!erreurs[cle]);
+      if (erreurs[cle] && !premier) premier = champs[cle];
+    });
+    $("err-mode").textContent = erreurs.mode;
+    if (erreurs.mode && !premier) premier = document.querySelector('input[name="mode"]');
+    if (premier) { premier.focus(); return; }
+
+    etat.stagiaire = { nom: nom, prenom: prenom, email: email };
+    etat.reponses = new Array(NB).fill(null);
+    etat.index = 0;
+    etat.idPassage = nouvelId();
+    etat.fin = 0;
+    etat.envoi = "non";
+    etat.ecran = "quiz";
+    sauver();
+    afficher("quiz");
+  });
+
+  /* ---------- Quiz ---------- */
+  function rendreQuestion() {
+    const i = etat.index;
+    const q = C.questions[i];
+    const objectif = C.objectifs.filter((o) => o.id === q.objectif)[0];
+
+    $("quiz-compte").textContent = "Question " + (i + 1) + " sur " + NB;
+    $("quiz-objectif").textContent = objectif.titre;
+    const barre = $("quiz-barre");
+    barre.setAttribute("aria-valuemax", NB);
+    barre.setAttribute("aria-valuenow", i + 1);
+    barre.firstElementChild.style.width = (100 * (i + 1)) / NB + "%";
+
+    $("quiz-question").textContent = q.question;
+    const liste = $("quiz-choix");
+    liste.textContent = "";
+    q.choix.forEach((texte, k) => {
+      const label = creer("label", "choix");
+      const radio = creer("input");
+      radio.type = "radio"; radio.name = "reponse"; radio.value = String(k);
+      radio.checked = etat.reponses[i] === k;
+      label.appendChild(radio);
+      label.appendChild(creer("span", "choix-texte", texte));
+      liste.appendChild(label);
+      radio.addEventListener("change", () => {
+        etat.reponses[i] = k; sauver(); marquerActifs(liste); majNavigation();
+      });
+    });
+    marquerActifs(liste);
+    majNavigation();
+  }
+  function majNavigation() {
+    const i = etat.index;
+    $("btn-precedent").hidden = i === 0;
+    const suivant = $("btn-suivant");
+    suivant.textContent = i === NB - 1 ? "Terminer et voir mes résultats" : "Suivant";
+    suivant.disabled = etat.reponses[i] === null;
+  }
+  $("btn-precedent").addEventListener("click", () => {
+    if (etat.ecran !== "quiz" || etat.index === 0) return;
+    etat.index--; sauver(); afficher("quiz");
+  });
+  $("btn-suivant").addEventListener("click", () => {
+    if (etat.ecran !== "quiz" || etat.reponses[etat.index] === null) return;   // bloque aussi le double clic
+    if (etat.index < NB - 1) { etat.index++; sauver(); afficher("quiz"); return; }
+    const manquante = etat.reponses.indexOf(null);
+    if (manquante !== -1) { etat.index = manquante; sauver(); afficher("quiz"); return; }
+    etat.fin = Date.now();
+    etat.ecran = "resultats";
+    sauver();
+    afficher("resultats");
+    envoyer();
+  });
+
+  /* ---------- Résultats ---------- */
+  function rendreResultats() {
+    const r = calculer();
+    const m = modeChoisi();
+    $("res-stagiaire").textContent = etat.stagiaire.prenom + " " + etat.stagiaire.nom;
+    $("res-mode").textContent = m.titre;
+    $("res-date").textContent = formaterDate(new Date(etat.fin));
+    $("res-score").textContent = r.pct + INSECABLE + "%";
+    $("res-niveau").textContent = "Niveau indicatif : " + r.niveau.toLowerCase();
+    $("res-detail").textContent = texteBonnes(r.bonnes, r.total);
+    $("res-barre").firstElementChild.style.width = "0%";
+
+    const zone = $("res-objectifs");
+    zone.textContent = "";
+    const remplissages = [[$("res-barre").firstElementChild, r.pct]];
+    r.objectifs.forEach((o) => {
+      const bloc = creer("div", "objectif");
+      const ligne = creer("div", "objectif-ligne");
+      ligne.appendChild(creer("span", "objectif-titre", o.titre));
+      ligne.appendChild(creer("span", "objectif-score", o.pct + INSECABLE + "%"));
+      const barre = creer("div", "barre");
+      const plein = creer("span");
+      barre.appendChild(plein);
+      bloc.appendChild(ligne);
+      bloc.appendChild(barre);
+      bloc.appendChild(creer("div", "objectif-detail", texteBonnes(o.bonnes, o.total)));
+      zone.appendChild(bloc);
+      remplissages.push([plein, o.pct]);
+    });
+    // Les barres se remplissent une fois l'écran affiché
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      remplissages.forEach((p) => { p[0].style.width = p[1] + "%"; });
+    }));
+    majStatut();
+  }
+
+  $("btn-nouveau").addEventListener("click", () => {
+    if (!window.confirm("Démarrer un nouveau passage ? Les résultats affichés ne seront plus visibles sur cet appareil. Pensez à télécharger la fiche PDF avant.")) return;
+    effacer();
+    etat = etatVide();
+    statutEnvoi = "";
+    afficher("accueil");
+  });
+
+  /* ------------------------------------------------------------------
+     Envoi vers Google Sheets (facultatif)
+     - un seul envoi par passage, même en cas de double clic ou de
+       rechargement : verrou local + identifiant de passage dédoublonné
+       côté Apps Script
+     ------------------------------------------------------------------ */
+  const URL_ENVOI = String(C.googleSheetUrl || "").trim();
+  let envoiEnCours = false;
+  let statutEnvoi = "";                       // "" | cours | ok | echec
+
+  function majStatut() {
+    const boite = $("res-statut");
+    boite.textContent = "";
+    boite.className = "statut";
+    if (!URL_ENVOI) { boite.hidden = true; return; }
+    const s = etat.envoi === "fait" ? "ok" : statutEnvoi;
+    if (!s) { boite.hidden = true; return; }
+    boite.hidden = false;
+    if (s === "cours") boite.appendChild(creer("span", null, "Transmission des résultats à l'organisme de formation…"));
+    if (s === "ok") { boite.classList.add("ok"); boite.appendChild(creer("span", null, "Résultats transmis à l'organisme de formation.")); }
+    if (s === "echec") {
+      boite.classList.add("echec");
+      boite.appendChild(creer("span", null, "Les résultats n'ont pas pu être transmis. Vérifiez votre connexion internet."));
+      const b = creer("button", "lien-bouton", "Réessayer l'envoi");
+      b.type = "button";
+      b.addEventListener("click", envoyer);
+      boite.appendChild(b);
+    }
+  }
+
+  function envoyer() {
+    if (!URL_ENVOI || envoiEnCours || etat.envoi === "fait" || etat.ecran !== "resultats") return;
+    envoiEnCours = true;
+    statutEnvoi = "cours";
+    majStatut();
+
+    const r = calculer();
+    const idEnvoye = etat.idPassage;
+    const corps = JSON.stringify({
+      id: idEnvoye,
+      date: new Date(etat.fin).toISOString(),
+      nom: etat.stagiaire.nom,
+      prenom: etat.stagiaire.prenom,
+      email: etat.stagiaire.email,
+      mode: modeChoisi().titre,
+      scoreGlobal: r.pct,
+      niveau: r.niveau,
+      objectifs: r.objectifs.map((o) => ({ titre: o.titre, score: o.pct })),
+      formation: C.formation.titre,
+      organisme: C.organisme.nom
+    });
+
+    let minuteur = null;
+    const options = {
+      method: "POST",
+      // text/plain : requête « simple », acceptée par Apps Script sans pré-vérification CORS
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: corps,
+      redirect: "follow"
+    };
+    if (typeof AbortController === "function") {
+      const ctrl = new AbortController();
+      options.signal = ctrl.signal;
+      minuteur = setTimeout(() => ctrl.abort(), 20000);
+    }
+
+    fetch(URL_ENVOI, options)
+      .then((rep) => rep.text())
+      .then((txt) => {
+        let ok = false;
+        try { ok = JSON.parse(txt).ok === true; } catch (e) { ok = false; }
+        if (!ok) throw new Error("Réponse inattendue du script");
+        if (etat.idPassage === idEnvoye) { etat.envoi = "fait"; sauver(); statutEnvoi = "ok"; }
+      })
+      .catch(() => { if (etat.idPassage === idEnvoye) statutEnvoi = "echec"; })
+      .then(() => {
+        if (minuteur) clearTimeout(minuteur);
+        envoiEnCours = false;
+        if (etat.ecran === "resultats") majStatut();
+      });
+  }
+  window.addEventListener("online", () => { if (statutEnvoi === "echec") envoyer(); });
+
+  /* ------------------------------------------------------------------
+     Générateur PDF intégré (aucune bibliothèque externe)
+     Une page A4, polices standard Helvetica, accents français gérés.
+     ------------------------------------------------------------------ */
+  const PDF = (function () {
+    const L_REG = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584,761,556,0,222,556,333,1000,556,556,333,1000,667,333,1000,0,611,0,0,222,222,333,333,350,556,1000,333,1000,500,333,944,0,500,667,278,333,556,556,556,556,260,556,333,737,370,556,584,333,737,333,400,584,333,333,333,556,537,278,333,333,365,556,834,834,834,611,667,667,667,667,667,667,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,500,556,556,556,556,278,278,278,278,556,556,556,556,556,556,556,584,611,556,556,556,556,500,556,500];
+    const L_GRAS = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584,761,556,0,278,556,500,1000,556,556,333,1000,667,333,1000,0,611,0,0,278,278,500,500,350,556,1000,333,1000,556,333,944,0,500,667,278,333,556,556,556,556,280,556,333,737,370,556,584,333,737,333,400,584,333,333,333,611,556,278,333,333,365,556,834,834,834,611,722,722,722,722,722,722,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,556,556,556,556,556,278,278,278,278,611,611,611,611,611,611,611,584,611,611,611,611,611,556,611,556];
+    const CP1252 = { 8364:128, 8218:130, 402:131, 8222:132, 8230:133, 8224:134, 8225:135, 710:136, 8240:137, 352:138, 8249:139, 338:140, 381:142, 8216:145, 8217:146, 8220:147, 8221:148, 8226:149, 8211:150, 8212:151, 732:152, 8482:153, 353:154, 8250:155, 339:156, 382:158, 376:159 };
+
+    // Texte → octets WinAnsi (les caractères inconnus sont simplifiés ou remplacés par « ? »)
+    function octets(texte) {
+      const out = [];
+      Array.from(String(texte == null ? "" : texte)).forEach((ch) => {
+        const c = ch.codePointAt(0);
+        if ((c >= 32 && c <= 126) || (c >= 160 && c <= 255)) out.push(c);
+        else if (CP1252[c]) out.push(CP1252[c]);
+        else if (c === 0x202F || c === 0x2009 || c === 0x2007) out.push(160);
+        else if (c === 9 || c === 10 || c === 13) out.push(32);
+        else if (c >= 0x300 && c <= 0x36F) { /* accent isolé : ignoré */ }
+        else {
+          const base = ch.normalize ? ch.normalize("NFD").replace(/[̀-ͯ]/g, "") : "";
+          const b = base.length === 1 ? base.charCodeAt(0) : 0;
+          out.push(b >= 32 && b <= 126 ? b : 63);
+        }
+      });
+      return out;
+    }
+    function largeur(texte, taille, gras) {
+      const t = gras ? L_GRAS : L_REG;
+      let w = 0;
+      octets(texte).forEach((o) => { w += t[o - 32] || 0; });
+      return (w * taille) / 1000;
+    }
+    function litteral(texte) {
+      let s = "";
+      octets(texte).forEach((o) => {
+        if (o === 40 || o === 41 || o === 92) s += "\\" + String.fromCharCode(o);
+        else if (o > 126) s += "\\" + o.toString(8);
+        else s += String.fromCharCode(o);
+      });
+      return s;
+    }
+    function tronquer(texte, taille, gras, max) {
+      let t = String(texte);
+      if (largeur(t, taille, gras) <= max) return t;
+      const car = Array.from(t);
+      while (car.length > 1 && largeur(car.join("") + "…", taille, gras) > max) car.pop();
+      return car.join("").replace(/\s+$/, "") + "…";
+    }
+    function couper(texte, taille, gras, max, maxLignes) {
+      const mots = String(texte).split(/\s+/).filter(Boolean);
+      const lignes = [];
+      let ligne = "";
+      mots.forEach((mot) => {
+        const essai = ligne ? ligne + " " + mot : mot;
+        if (largeur(essai, taille, gras) <= max || !ligne) ligne = essai;
+        else { lignes.push(ligne); ligne = mot; }
+      });
+      if (ligne) lignes.push(ligne);
+      if (maxLignes && lignes.length > maxLignes) {
+        lignes.length = maxLignes;
+        lignes[maxLignes - 1] = lignes[maxLignes - 1] + "…";
+      }
+      return lignes.map((l) => tronquer(l, taille, gras, max));
+    }
+
+    function Document(titre) {
+      const L = 595.28, H = 841.89;
+      const ops = [];
+      const n = (v) => String(Math.round(v * 100) / 100);
+      const rvb = (hex) => (lireHex(hex) || [0, 0, 0]).map((v) => n(v / 255)).join(" ");
+
+      function texte(s, x, y, o) {
+        o = o || {};
+        const taille = o.taille || 10, gras = !!o.gras;
+        const w = largeur(s, taille, gras);
+        const x0 = o.align === "droite" ? x - w : o.align === "centre" ? x - w / 2 : x;
+        ops.push("BT /" + (gras ? "F2" : "F1") + " " + n(taille) + " Tf " + rvb(o.couleur || "#000000") + " rg " +
+                 n(x0) + " " + n(H - y) + " Td (" + litteral(s) + ") Tj ET");
+        return w;
+      }
+      function rect(x, y, w, h, o) {
+        o = o || {};
+        if (w <= 0 || h <= 0) return;
+        const r = Math.min(o.rayon || 0, w / 2, h / 2);
+        const b = H - y - h, k = 0.5523 * r;
+        let chemin;
+        if (!r) chemin = n(x) + " " + n(b) + " " + n(w) + " " + n(h) + " re";
+        else chemin = [
+          n(x + r) + " " + n(b) + " m",
+          n(x + w - r) + " " + n(b) + " l",
+          n(x + w - r + k) + " " + n(b) + " " + n(x + w) + " " + n(b + r - k) + " " + n(x + w) + " " + n(b + r) + " c",
+          n(x + w) + " " + n(b + h - r) + " l",
+          n(x + w) + " " + n(b + h - r + k) + " " + n(x + w - r + k) + " " + n(b + h) + " " + n(x + w - r) + " " + n(b + h) + " c",
+          n(x + r) + " " + n(b + h) + " l",
+          n(x + r - k) + " " + n(b + h) + " " + n(x) + " " + n(b + h - r + k) + " " + n(x) + " " + n(b + h - r) + " c",
+          n(x) + " " + n(b + r) + " l",
+          n(x) + " " + n(b + r - k) + " " + n(x + r - k) + " " + n(b) + " " + n(x + r) + " " + n(b) + " c",
+          "h"
+        ].join(" ");
+        let pre = "", peinture = "n";
+        if (o.fond) { pre += rvb(o.fond) + " rg "; peinture = "f"; }
+        if (o.trait) { pre += rvb(o.trait) + " RG " + n(o.epaisseur || 1) + " w "; peinture = o.fond ? "B" : "S"; }
+        ops.push(pre + chemin + " " + peinture);
+      }
+      function ligne(x1, y1, x2, y2, o) {
+        o = o || {};
+        ops.push(rvb(o.couleur || "#000000") + " RG " + n(o.epaisseur || 1) + " w " +
+                 (o.pointille ? "[1 2.5] 0 d 1 J " : "") +
+                 n(x1) + " " + n(H - y1) + " m " + n(x2) + " " + n(H - y2) + " l S" +
+                 (o.pointille ? " [] 0 d 0 J" : ""));
+      }
+      function hexUtf16(s) {
+        let h = "FEFF";
+        for (let i = 0; i < s.length; i++) h += ("000" + s.charCodeAt(i).toString(16)).slice(-4).toUpperCase();
+        return "<" + h + ">";
+      }
+      function generer() {
+        const contenu = ops.join("\n");
+        const d = new Date();
+        const horodatage = "D:" + d.getFullYear() + deux(d.getMonth() + 1) + deux(d.getDate()) + deux(d.getHours()) + deux(d.getMinutes()) + deux(d.getSeconds());
+        const objets = [
+          "<< /Type /Catalog /Pages 2 0 R /Lang (fr-FR) >>",
+          "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+          "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + L + " " + H + "] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>",
+          "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+          "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>",
+          "<< /Length " + contenu.length + " >>\nstream\n" + contenu + "\nendstream",
+          "<< /Title " + hexUtf16(titre || "Fiche de résultats") + " /CreationDate (" + horodatage + ") >>"
+        ];
+        let pdf = "%PDF-1.4\n%\xE2\xE3\xCF\xD3\n";
+        const positions = [];
+        objets.forEach((obj, i) => {
+          positions.push(pdf.length);
+          pdf += (i + 1) + " 0 obj\n" + obj + "\nendobj\n";
+        });
+        const debutXref = pdf.length;
+        pdf += "xref\n0 " + (objets.length + 1) + "\n0000000000 65535 f \n";
+        positions.forEach((p) => { pdf += ("0000000000" + p).slice(-10) + " 00000 n \n"; });
+        pdf += "trailer\n<< /Size " + (objets.length + 1) + " /Root 1 0 R /Info 7 0 R >>\nstartxref\n" + debutXref + "\n%%EOF\n";
+        const bytes = new Uint8Array(pdf.length);
+        for (let i = 0; i < pdf.length; i++) bytes[i] = pdf.charCodeAt(i) & 255;
+        return bytes;
+      }
+      return { L: L, H: H, texte: texte, rect: rect, ligne: ligne, generer: generer };
+    }
+    return { Document: Document, largeur: largeur, tronquer: tronquer, couper: couper };
+  })();
+
+  /* Mise en page de la fiche de résultats (une page A4) */
+  function composerFiche() {
+    const r = calculer();
+    const m = modeChoisi();
+    const date = new Date(etat.fin);
+    const doc = PDF.Document("Fiche de résultats - " + etat.stagiaire.prenom + " " + etat.stagiaire.nom);
+    const rgb = lireHex(COULEUR);
+    const PALE = melanger(rgb, [255, 255, 255], 0.86);
+    const SUR = luminance(rgb) > 0.5 ? "#14212A" : "#FFFFFF";
+    const ENCRE = "#1B2A33", GRIS = "#5B6B75", TRAIT = "#C9D2D7";
+    const G = 48, D = doc.L - 48, LARG = D - G;
+
+    // En-tête : logo, organisme, titre du document
+    doc.rect(G, 44, 40, 40, { fond: COULEUR, rayon: 8 });
+    doc.texte(C.organisme.initiales || C.organisme.nom.slice(0, 2).toUpperCase(), G + 20, 69.5, { taille: 15, gras: true, couleur: SUR, align: "centre" });
+    doc.texte(PDF.tronquer(C.organisme.nom, 14, true, 250), G + 52, 61, { taille: 14, gras: true, couleur: ENCRE });
+    if (C.organisme.sousTitre) doc.texte(PDF.tronquer(C.organisme.sousTitre, 9.5, false, 250), G + 52, 76, { taille: 9.5, couleur: GRIS });
+    doc.texte("Fiche de résultats", D, 61, { taille: 14, gras: true, couleur: ENCRE, align: "droite" });
+    doc.texte(m.titre + (m.court ? " (" + m.court.toLowerCase() + ")" : ""), D, 76, { taille: 10, couleur: COULEUR, align: "droite", gras: true });
+    doc.ligne(G, 100, D, 100, { couleur: TRAIT, epaisseur: 0.8 });
+
+    // Informations du passage
+    const col2 = G + 270;
+    function info(libelle, valeur, x, y, max) {
+      doc.texte(libelle, x, y, { taille: 8.5, couleur: GRIS });
+      doc.texte(PDF.tronquer(valeur, 11, true, max), x, y + 15, { taille: 11, gras: true, couleur: ENCRE });
+    }
+    info("Stagiaire", etat.stagiaire.prenom + " " + etat.stagiaire.nom, G, 124, 250);
+    info("Adresse e-mail", etat.stagiaire.email, col2, 124, D - col2);
+    info("Formation", C.formation.titre, G, 164, LARG);
+    info("Date et heure du passage", formaterDate(date), G, 204, 250);
+    info("Type d'évaluation", m.titre + (m.court ? " (" + m.court.toLowerCase() + ")" : ""), col2, 204, D - col2);
+    doc.ligne(G, 238, D, 238, { couleur: TRAIT, epaisseur: 0.8 });
+
+    // Score global
+    doc.texte("Score global", G, 264, { taille: 11, gras: true, couleur: ENCRE });
+    const wScore = doc.texte(r.pct + " %", G, 306, { taille: 36, gras: true, couleur: COULEUR });
+    doc.texte("Niveau indicatif : " + r.niveau.toLowerCase(), G + wScore + 22, 290, { taille: 12, gras: true, couleur: ENCRE });
+    doc.texte(texteBonnes(r.bonnes, r.total), G + wScore + 22, 306, { taille: 10.5, couleur: GRIS });
+    doc.rect(G, 320, LARG, 10, { fond: PALE, rayon: 5 });
+    doc.rect(G, 320, (LARG * r.pct) / 100, 10, { fond: COULEUR, rayon: 5 });
+
+    // Score par objectif (la hauteur des lignes s'adapte au nombre d'objectifs)
+    doc.texte("Score par objectif", G, 364, { taille: 11, gras: true, couleur: ENCRE });
+    const HAUT_BOITE = 190, BAS_MAX = 762;
+    const debut = 388;
+    const pas = Math.min(46, (BAS_MAX - HAUT_BOITE - 22 - debut) / r.objectifs.length);
+    const tailleObj = pas >= 30 ? 10.5 : 9;
+    const hb = pas >= 30 ? 8 : 6;
+    r.objectifs.forEach((o, i) => {
+      const y = debut + i * pas;
+      const det = texteBonnes(o.bonnes, o.total);
+      doc.texte(PDF.tronquer(o.titre, tailleObj, true, LARG - 70 - PDF.largeur(det, 8.5, false)), G, y, { taille: tailleObj, gras: true, couleur: ENCRE });
+      doc.texte(det, D - 48, y, { taille: 8.5, couleur: GRIS, align: "droite" });
+      doc.texte(o.pct + " %", D, y, { taille: tailleObj, gras: true, couleur: ENCRE, align: "droite" });
+      doc.rect(G, y + 8, LARG, hb, { fond: PALE, rayon: hb / 2 });
+      doc.rect(G, y + 8, (LARG * o.pct) / 100, hb, { fond: COULEUR, rayon: hb / 2 });
+    });
+
+    // Encadré « Décision du formateur » (vide, à compléter à la main)
+    const haut = Math.max(debut + r.objectifs.length * pas + 6, BAS_MAX - HAUT_BOITE);
+    const bx = G + 16, bd = D - 16;
+    doc.rect(G, haut, LARG, HAUT_BOITE, { trait: COULEUR, epaisseur: 1.2, rayon: 6 });
+    doc.texte("Décision du formateur", bx, haut + 25, { taille: 11.5, gras: true, couleur: COULEUR });
+    let x = bx + doc.texte("Niveau retenu :", bx, haut + 52, { taille: 10, couleur: ENCRE }) + 14;
+    C.niveaux.slice().sort((a, b) => a.min - b.min).forEach((niv) => {
+      const wl = PDF.largeur(niv.nom, 10, false);
+      if (x + 14 + wl > bd) return;
+      doc.rect(x, haut + 44, 9, 9, { trait: ENCRE, epaisseur: 0.8 });
+      doc.texte(niv.nom, x + 14, haut + 52, { taille: 10, couleur: ENCRE });
+      x += 14 + wl + 20;
+    });
+    doc.texte("Adaptation prévue du parcours :", bx, haut + 80, { taille: 10, couleur: ENCRE });
+    [102, 124, 146].forEach((dy) => doc.ligne(bx, haut + dy, bd, haut + dy, { couleur: GRIS, epaisseur: 0.8, pointille: true }));
+    const wDate = doc.texte("Date :", bx, haut + 173, { taille: 10, couleur: ENCRE });
+    doc.ligne(bx + wDate + 6, haut + 174, bx + 150, haut + 174, { couleur: GRIS, epaisseur: 0.8, pointille: true });
+    const xs = bx + 176;
+    const wSign = doc.texte("Nom et signature du formateur :", xs, haut + 173, { taille: 10, couleur: ENCRE });
+    doc.ligne(xs + wSign + 6, haut + 174, bd, haut + 174, { couleur: GRIS, epaisseur: 0.8, pointille: true });
+
+    // Pied de page
+    doc.texte("Fiche générée automatiquement à partir des réponses du stagiaire. Le niveau affiché est indicatif.", G, 794, { taille: 8, couleur: GRIS });
+    doc.texte("Référence du passage : " + etat.idPassage, G, 806, { taille: 8, couleur: GRIS });
+    const cr = C.credit;
+    if (cr && cr.afficher && cr.nom) {
+      doc.texte(PDF.tronquer("Démo réalisée par " + cr.nom + (cr.email ? " — " + cr.email : ""), 8, false, 290), D, 806, { taille: 8, couleur: GRIS, align: "droite" });
+    }
+    return doc.generer();
+  }
+
+  function nomFichier() {
+    const propre = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "x";
+    const d = new Date(etat.fin);
+    return "fiche-resultats_" + propre(etat.stagiaire.nom) + "-" + propre(etat.stagiaire.prenom) + "_" +
+           propre(modeChoisi().court || modeChoisi().id).toLowerCase() + "_" +
+           d.getFullYear() + "-" + deux(d.getMonth() + 1) + "-" + deux(d.getDate()) + ".pdf";
+  }
+
+  let pdfEnCours = false;
+  $("btn-pdf").addEventListener("click", () => {
+    if (pdfEnCours || etat.ecran !== "resultats") return;
+    pdfEnCours = true;
+    try {
+      const blob = new Blob([composerFiche()], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nomFichier();
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+      window.alert("La fiche PDF n'a pas pu être créée sur cet appareil. Essayez avec un autre navigateur.");
+    }
+    setTimeout(() => { pdfEnCours = false; }, 1200);
+  });
+
+  /* ------------------------------------------------------------------
+     Démarrage
+     ------------------------------------------------------------------ */
+  construireModes();
+  charger();
+  afficher(etat.ecran, true);
+  if (etat.ecran === "resultats") envoyer();     // reprise d'un envoi non confirmé (dédoublonné côté Sheet)
+})();
+</script>
+</body>
+</html>
